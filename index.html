@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Green Environmental Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* --- PALETTE (White Background + Green Data) --- */
+        :root {
+            --bg-color: #ffffff; 
+            --card-bg: #ffffff;
+            --text-color: #1b5e20; 
+            --primary-color: #2e7d32; 
+            --highlight-color: #4caf50; 
+            --muted-green: #81c784;
+            --border-color: #e0e0e0; 
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px; /* Reduced max-width for tighter layout */
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        header h1 {
+            font-weight: 700;
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+            color: var(--primary-color);
+        }
+
+        header p {
+            color: #666; 
+            font-size: 1rem;
+            margin-top: 0;
+        }
+
+        /* Grid Layout - Adjusted for smaller cards */
+        .dashboard-grid {
+            display: grid;
+            /* Reverted min-width to 350px so cards can sit side-by-side */
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px; 
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); 
+            border: 1px solid #f0f0f0;
+            padding: 20px;
+            transition: transform 0.2s;
+            border-top: 4px solid var(--primary-color);
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(46, 125, 50, 0.1);
+        }
+
+        .card h2 {
+            font-size: 1.1rem; /* Slightly smaller header */
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        /* --- RESTORED ORIGINAL SIZE --- */
+        .chart-container {
+            position: relative;
+            height: 300px; /* Back to original height */
+            width: 100%;
+        }
+
+        .highlight {
+            font-weight: bold;
+            color: var(--highlight-color);
+        }
+        
+        .summary-list {
+            padding-left: 20px;
+            margin: 0;
+        }
+        
+        .summary-list li {
+            margin-bottom: 10px;
+            color: #444;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>🌿 Environmental Resource Dashboard</h1>
+            <p>Forest, Wetland, and Desertification Metrics</p>
+        </header>
+
+        <div class="dashboard-grid">
+            
+            <div class="card" style="border-top-color: #2e7d32;">
+                <h2>🌍 Land Area Comparison (10,000 ha)</h2>
+                <div class="chart-container">
+                    <canvas id="areaChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card" style="border-top-color: #4caf50;">
+                <h2>🌱 Biodiversity (Species Count)</h2>
+                <div class="chart-container">
+                    <canvas id="bioChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card" style="border-top-color: #8bc34a;">
+                <h2>📊 Key Ecological Ratios (%)</h2>
+                <div class="chart-container">
+                    <canvas id="ratioChart"></canvas>
+                </div>
+            </div>
+
+             <div class="card" style="border-top-color: #009688;">
+                <h2>📝 Executive Summary</h2>
+                <ul class="summary-list">
+                    <li><strong>Dominant:</strong> Desertified land (<span class="highlight">4325.62</span> units) is the largest area.</li>
+                    <li><strong>Forests:</strong> Cover <span class="highlight">12.14%</span> of the region.</li>
+                    <li><strong>Wetlands:</strong> <span class="highlight">99.92%</span> Natural Rate (Pristine).</li>
+                    <li><strong>Flora:</strong> <span class="highlight">6600+</span> Higher Plant species.</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // GREEN COLOR PALETTE
+        // ============================================
+        const greenPalette = {
+            darkest: 'rgba(27, 94, 32, 0.85)', 
+            dark: 'rgba(46, 125, 50, 0.85)',    
+            standard: 'rgba(76, 175, 80, 0.85)',
+            light: 'rgba(139, 195, 74, 0.85)',  
+            tealish: 'rgba(0, 150, 136, 0.85)', 
+            mint: 'rgba(102, 187, 106, 0.85)'   
+        };
+
+        const greenBorders = {
+            darkest: '#1b5e20',
+            dark: '#2e7d32',
+            standard: '#4caf50',
+            light: '#8bc34a',
+            tealish: '#009688',
+            mint: '#66bb6a'
+        };
+
+        // ============================================
+        // CHART CONFIGURATION
+        // ============================================
+        
+        // Chart 1: Land Area 
+        const areaCtx = document.getElementById('areaChart').getContext('2d');
+        new Chart(areaCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Desertified', 'Forest Area', 'Wetlands', 'Suitable Forest'],
+                datasets: [{
+                    label: 'Area (10,000 ha)',
+                    data: [4325.62, 1490.99, 652.9, 47.29],
+                    backgroundColor: [
+                        greenPalette.darkest, 
+                        greenPalette.dark,    
+                        greenPalette.tealish, 
+                        greenPalette.light    
+                    ],
+                    borderColor: [
+                        greenBorders.darkest,
+                        greenBorders.dark,
+                        greenBorders.tealish,
+                        greenBorders.light
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y', 
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { grid: { color: '#f0f0f0' } }, 
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Chart 2: Biodiversity
+        const bioCtx = document.getElementById('bioChart').getContext('2d');
+        new Chart(bioCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Higher Plant', 'Algae', 'Fungi', 'CITES', 'Key Protected'],
+                datasets: [{
+                    label: 'Species Count',
+                    data: [6600, 2376, 878, 300, 38],
+                    backgroundColor: greenPalette.standard,
+                    borderColor: greenBorders.standard,
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { 
+                        beginAtZero: true,
+                        grid: { color: '#f0f0f0' } 
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Chart 3: Percentages
+        const ratioCtx = document.getElementById('ratioChart').getContext('2d');
+        new Chart(ratioCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Natural Wetland Rate', 'Forest Coverage', 'Wetland Share'],
+                datasets: [{
+                    label: 'Percentage',
+                    data: [99.92, 12.14, 5.31],
+                    backgroundColor: [
+                        greenPalette.tealish, 
+                        greenPalette.dark,    
+                        greenPalette.light    
+                    ],
+                    borderColor: '#ffffff',
+                    borderWidth: 3,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: {
+                    padding: 10
+                },
+                plugins: {
+                    legend: { 
+                        position: 'right',
+                        labels: { padding: 15, color: '#333', boxWidth: 15 }
+                    }
+                }
+            }
+        });
+
+    </script>
+</body>
+</html>
