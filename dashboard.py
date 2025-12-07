@@ -3,15 +3,14 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # ==========================================
-# 1. DATA INGESTION
+# 1. DATA PREPARATION
 # ==========================================
-# Recreating the dataset from your image manually to ensure accuracy
 data = {
     'Category': [
-        'Forest Resource', 'Forest Resource', 'Forest Resource',
+        'Forest', 'Forest', 'Forest',
         'Biodiversity', 'Biodiversity', 'Biodiversity', 'Biodiversity', 'Biodiversity',
         'Wetlands', 'Wetlands', 'Wetlands',
-        'Desertification', 'Desertification', 'Desertification', 'Desertification'
+        'Desert', 'Desert', 'Desert', 'Desert'
     ],
     'Indicator': [
         'Forest Area', 'Forest Stock Volume', 'Forest Coverage',
@@ -35,54 +34,81 @@ data = {
 
 df = pd.DataFrame(data)
 
-# ==========================================
-# 2. DATA SEGMENTATION
-# ==========================================
-# We must split the data because the units (Hectares vs Species vs %) 
-# cannot be plotted on the same axis without distortion.
+# --- 2. DATA SEGMENTATION & STYLING ---
 
-# Group A: Land Area (Unit: 10,000 ha)
-area_df = df[df['Unit'] == '10,000 ha'].sort_values('Value', ascending=False)
+# Filter Group A: Land Area
+area_df = df[df['Unit'] == '10,000 ha'].copy()
+# Sort for better visualization
+area_df = area_df.sort_values('Value', ascending=False)
 
-# Group B: Biodiversity (Unit: Species)
-bio_df = df[df['Unit'] == 'Species'].sort_values('Value', ascending=False)
+# Define specific colors based on Category for the Area Chart
+def get_area_color(category):
+    if category == 'Desert': return '#E3C565'  # Sand Yellow
+    if category == 'Forest': return '#2E7D32'  # Forest Green
+    if category == 'Wetlands': return '#0288D1' # Water Blue
+    return '#999999'
 
-# Group C: Percentages (Unit: %)
-pct_df = df[df['Unit'] == '%'].sort_values('Value', ascending=False)
+area_df['Color'] = area_df['Category'].apply(get_area_color)
+
+
+# Filter Group B: Biodiversity
+bio_df = df[df['Unit'] == 'Species'].sort_values('Value', ascending=False).copy()
+
+# Add Icons to Labels directly in the dataframe
+icon_map = {
+    'Higher Plant Species': '🌳 Higher Plants',
+    'Algae Species': '🌿 Algae',
+    'Fungi Species': '🍄 Fungi',
+    'CITES Appendix': '📜 CITES Listed',
+    'National Key Protected': '🐼 Key Protected'
+}
+bio_df['Label_With_Icon'] = bio_df['Indicator'].map(icon_map).fillna(bio_df['Indicator'])
 
 # ==========================================
-# 3. VISUALIZATION CONFIGURATION
+# 3. VISUALIZATION
 # ==========================================
-# Using a dark grid style to match a modern VS Code aesthetic
 sns.set_theme(style="whitegrid", context="talk")
-fig, axes = plt.subplots(3, 1, figsize=(12, 18))
-plt.subplots_adjust(hspace=0.4) # Add space between charts
 
-# --- Chart 1: Land Area Comparison (The Scale of the Environment) ---
-sns.barplot(ax=axes[0], x='Value', y='Indicator', data=area_df, palette='magma')
+# Changed to 2 rows instead of 3
+fig, axes = plt.subplots(2, 1, figsize=(12, 14))
+plt.subplots_adjust(hspace=0.3) 
+
+# --- Chart 1: Land Area (Custom Colors) ---
+# Note: We use 'Value' for x, 'Indicator' for y. 
+# We explicitly pass the colors list derived from the dataframe.
+sns.barplot(
+    ax=axes[0], 
+    x='Value', 
+    y='Indicator', 
+    data=area_df, 
+    palette=area_df['Color'].tolist() # Apply the custom color mapping
+)
 axes[0].set_title('Major Land Area Metrics (10,000 ha)', fontsize=16, fontweight='bold')
 axes[0].set_xlabel('Area (10,000 hectares)')
 axes[0].set_ylabel('')
-# Add labels to bars
+
+# Add bar labels
 for container in axes[0].containers:
     axes[0].bar_label(container, padding=5, fmt='%.1f')
 
-# --- Chart 2: Biodiversity Count ---
-sns.barplot(ax=axes[1], x='Value', y='Indicator', data=bio_df, palette='viridis')
+
+# --- Chart 2: Biodiversity (With Icons in Labels) ---
+# Using a specific palette for biology (Greens/Teals/Browns)
+bio_palette = ['#4CAF50', '#009688', '#795548', '#FF9800', '#D32F2F']
+
+sns.barplot(
+    ax=axes[1], 
+    x='Value', 
+    y='Label_With_Icon', # Using the new column with icons
+    data=bio_df, 
+    palette=bio_palette
+)
 axes[1].set_title('Biodiversity Richness (Species Count)', fontsize=16, fontweight='bold')
 axes[1].set_xlabel('Count')
 axes[1].set_ylabel('')
+
 for container in axes[1].containers:
     axes[1].bar_label(container, padding=5, fmt='%.0f')
-
-# --- Chart 3: Environmental Ratios ---
-sns.barplot(ax=axes[2], x='Value', y='Indicator', data=pct_df, palette='coolwarm')
-axes[2].set_title('Key Environmental Ratios (%)', fontsize=16, fontweight='bold')
-axes[2].set_xlabel('Percentage')
-axes[2].set_xlim(0, 110) # Fix scale to 100%
-axes[2].set_ylabel('')
-for container in axes[2].containers:
-    axes[2].bar_label(container, padding=5, fmt='%.2f%%')
 
 # ==========================================
 # 4. RENDER
